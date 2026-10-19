@@ -12,17 +12,23 @@ export interface Visor {
   controlPorSensores(activo: boolean): void;
   /** Rotación actual del modelo, en grados (para mostrarla en pantalla). */
   rotacionActualGrados(): { x: number; y: number };
+  /** Sesión 36: true deja ver lo que haya detrás del canvas (la cámara). */
+  fondoTransparente(activo: boolean): void;
   destruir(): void;
 }
 
 export function crearVisor(contenedor: HTMLElement): Visor {
+  const COLOR_FONDO = new THREE.Color(0x0b1220);
   const escena = new THREE.Scene();
-  escena.background = new THREE.Color(0x0b1220);
+  escena.background = COLOR_FONDO;
 
   const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
   camara.position.set(0, 0, 4);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Sesión 36: alpha se decide AL CREAR el renderer (no se puede cambiar
+  // después). Se crea siempre con alfa; la cámara solo alterna scene.background.
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0); // limpiar con alfa 0 = transparente
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   contenedor.append(renderer.domElement);
 
@@ -86,6 +92,9 @@ export function crearVisor(contenedor: HTMLElement): Visor {
     },
     rotacionActualGrados() {
       return { x: aGrados(grupo.rotation.x), y: aGrados(grupo.rotation.y) };
+    },
+    fondoTransparente(activo) {
+      escena.background = activo ? null : COLOR_FONDO;
     },
     destruir() {
       cancelAnimationFrame(animacion);

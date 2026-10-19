@@ -131,8 +131,11 @@ body {
 
 /* Sesión 35: visor 3D y controles de sensores */
 .visor-zona { max-width: 40em; margin: 1.2em auto 0; padding: 0 1em; }
-.visor { width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #2a3550; }
-.visor canvas { display: block; width: 100%; touch-action: none; }
+.visor { position: relative; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #2a3550; background: #0b1220; }
+.visor canvas { position: relative; z-index: 1; display: block; width: 100%; touch-action: none; }
+/* Sesión 36: el video de la cámara detrás del canvas transparente */
+.fondo-camara { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fondo-camara[hidden] { display: none; } /* la clase da display propio: hay que restituir [hidden] */
 .visor-barra { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; margin-bottom: .6em; }
 .visor-barra button { background: #162038; color: #e8e2cf; border: 1px solid #2a3550; border-radius: 8px; padding: .45em .8em; cursor: pointer; }
 .visor-barra button:disabled { opacity: .45; cursor: not-allowed; }

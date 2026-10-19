@@ -6,6 +6,7 @@ import type { ProgresoModelo } from "./db";
 import { crearVisor } from "./visor";
 import { pedirPermisoOrientacion, hayOrientacionReal, iniciarControlOrientacion } from "./sensores";
 import type { ControlOrientacion } from "./sensores";
+import { iniciarCamaraDeFondo, detenerCamaraDeFondo, describirErrorCamara } from "./camara";
 
 // Punto de entrada del proyecto. El andamiaje de Vite + TypeScript + Three.js
 // se confirmó en sesiones anteriores; el Service Worker se registró en la
@@ -188,6 +189,50 @@ btnOrientacion.addEventListener("click", async () => {
   }, 150);
 });
 btnCalibrar.addEventListener("click", () => control?.calibrar());
+
+// ── Sesión 36: la cámara como fondo vivo del visor ─────────────────────────
+const btnCamara = document.querySelector<HTMLButtonElement>("#btn-camara")!;
+const videoFondo = document.querySelector<HTMLVideoElement>("#fondo-camara")!;
+let streamFondo: MediaStream | null = null;
+
+function apagarCamara() {
+  // Si play() falló, streamFondo sigue en null pero el video ya tiene el flujo.
+  detenerCamaraDeFondo(videoFondo, streamFondo ?? (videoFondo.srcObject as MediaStream | null));
+  streamFondo = null;
+  videoFondo.hidden = true;
+  visor.fondoTransparente(false);
+  btnCamara.textContent = "📷 Cámara de fondo";
+}
+
+btnCamara.addEventListener("click", async () => {
+  if (streamFondo) {
+    apagarCamara(); // segundo clic: apagarla
+    return;
+  }
+  btnCamara.disabled = true;
+  try {
+    streamFondo = await iniciarCamaraDeFondo(videoFondo);
+    videoFondo.hidden = false;
+    visor.fondoTransparente(true);
+    avisarVisor("");
+    btnCamara.textContent = "📷 Cámara: ACTIVA (toca para apagar)";
+  } catch (error) {
+    apagarCamara();
+    avisarVisor(describirErrorCamara(error));
+  } finally {
+    btnCamara.disabled = false;
+  }
+});
+
+// Un flujo abierto que nadie mira gasta batería y deja el LED encendido: se
+// apaga al salir de la página. No se reactiva sola al volver — eso sería abrir
+// la cámara sin que el usuario lo pida.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && streamFondo) {
+    apagarCamara();
+    avisarVisor("La cámara se apagó al salir de la página. Vuelve a activarla cuando quieras.");
+  }
+});
 
 // Registro del Service Worker generado por Workbox — Sesión 34.
 registerSW({

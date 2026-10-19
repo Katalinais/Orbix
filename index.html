@@ -13,11 +13,15 @@
       <div class="visor-barra">
         <button type="button" id="btn-orientacion">📱 Rotar con el teléfono</button>
         <button type="button" id="btn-calibrar" disabled>Calibrar</button>
+        <button type="button" id="btn-camara">📷 Cámara de fondo</button>
         <span id="lectura-visor" class="lectura-visor"></span>
       </div>
       <p id="aviso-visor" class="aviso-visor" role="status" hidden></p>
-      <div id="visor" class="visor"></div>
-      <p class="aviso-demo">Visor de prueba: un cubo, no un modelo real. Arrastra con el ratón o el dedo para girarlo.</p>
+      <div id="visor" class="visor">
+        <video id="fondo-camara" class="fondo-camara" playsinline muted hidden></video>
+      </div>
+      <p class="aviso-demo">Visor de prueba: un cubo, no un modelo real. Arrastra con el ratón o el dedo para girarlo.
+        Con la cámara de fondo esto todavía NO es realidad aumentada: el cubo no está anclado a nada del mundo.</p>
     </section>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
