@@ -1,0 +1,42 @@
+Atlas 3D de Arquitectura de Software — checkpoint al cierre de la Sesión 35
+Electiva - PWA · UPTC (Sub-bloque B)
+
+Qué es esto
+-----------
+El Atlas 3D con su PRIMER visor de Three.js, controlado por los sensores
+de orientación del dispositivo (Sesión 35, espejo de la Sesión 25).
+Inclina el teléfono y el modelo gira; sin sensores (un computador de
+escritorio) el visor sigue siendo usable con ratón o dedo (OrbitControls).
+
+El catálogo real de modelos 3D todavía no existe: el visor muestra un
+CUBO DE PRUEBA, no un modelo real. Sirve para comprobar que la lectura de
+los sensores llega y mueve algo, sin inventar archivos .glb inexistentes.
+
+Cómo probarlo
+--------------
+  npm install
+  npm run dev           (para programar; el visor funciona igual)
+
+  Los sensores de orientación solo se ven en un dispositivo real, y desde
+  una página HTTPS. La forma más simple de probar en tu teléfono:
+     npm run build
+     npm run preview -- --host
+  y abrir desde el teléfono la URL "Network" que imprime Vite... pero
+  OJO: eso es HTTP, y Chrome para Android lo bloquea para sensores. Ver la
+  guía de la Sesión 35 (sección "Probar en un teléfono real") para las
+  opciones con HTTPS (túnel o localhost por USB).
+  En el computador, las DevTools de Chrome tienen un panel "Sensors"
+  (Ctrl+Shift+P → "Show Sensors") que simula la orientación.
+
+  Con el build (npm run build + npm run preview) la app además funciona
+  sin conexión (Sesión 34). Ten en cuenta que el precaché creció de unos
+  25 KiB a unos 500 KiB: es el peso de Three.js, que ahora sí se usa.
+
+Estructura nueva (Sesión 35)
+-----------------------------
+  src/visor.ts       escena de Three.js (cubo de prueba, luces, OrbitControls)
+  src/sensores.ts    permiso de iOS, ¿hay sensores reales?, orientación relativa
+  src/main.ts        conecta botones, visor y sensores
+  (el resto igual que en el checkpoint de la Sesión 34)
+
+UPTC · Facultad de Ingeniería · Electiva - PWA
