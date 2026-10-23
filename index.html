@@ -16,13 +16,26 @@
         <button type="button" id="btn-camara">📷 Cámara de fondo</button>
         <span id="lectura-visor" class="lectura-visor"></span>
       </div>
+      <div class="ar-zona">
+        <button type="button" id="btn-ar" disabled>🕶 Ver en AR</button>
+        <button type="button" id="btn-recomprobar">Comprobar de nuevo</button>
+        <span id="estado-ar" class="estado-ar" role="status">Comprobando si este dispositivo admite realidad aumentada…</span>
+        <details class="diag-ar">
+          <summary>Diagnóstico de realidad aumentada</summary>
+          <pre id="diag-ar"></pre>
+        </details>
+      </div>
       <p id="aviso-visor" class="aviso-visor" role="status" hidden></p>
       <div id="visor" class="visor">
         <video id="fondo-camara" class="fondo-camara" playsinline muted hidden></video>
       </div>
       <p class="aviso-demo">Visor de prueba: un cubo, no un modelo real. Arrastra con el ratón o el dedo para girarlo.
-        Con la cámara de fondo esto todavía NO es realidad aumentada: el cubo no está anclado a nada del mundo.</p>
+        Con la cámara de fondo esto no es realidad aumentada; «Ver en AR» sí abre una sesión WebXR, pero el cubo solo flota: aún no se apoya en ninguna superficie.</p>
     </section>
+    <div id="xr-overlay" class="xr-overlay">
+      <p id="xr-estado">Sesión de realidad aumentada activa</p>
+      <button type="button" id="btn-salir-ar">Salir de AR</button>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

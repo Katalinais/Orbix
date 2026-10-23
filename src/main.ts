@@ -6,6 +6,7 @@ import type { ProgresoModelo } from "./db";
 import { crearVisor } from "./visor";
 import { pedirPermisoOrientacion, hayOrientacionReal, iniciarControlOrientacion } from "./sensores";
 import type { ControlOrientacion } from "./sensores";
+import { diagnosticarAR, mensajeSoporteAR, pedirSesionAR, describirErrorAR } from "./xr";
 import { iniciarCamaraDeFondo, detenerCamaraDeFondo, describirErrorCamara } from "./camara";
 
 // Punto de entrada del proyecto. El andamiaje de Vite + TypeScript + Three.js
@@ -190,13 +191,13 @@ btnOrientacion.addEventListener("click", async () => {
 });
 btnCalibrar.addEventListener("click", () => control?.calibrar());
 
-// ── Sesión 36: la cámara como fondo vivo del visor ─────────────────────────
+// ── Session 36: the camera as a live viewer background ─────────────────────
 const btnCamara = document.querySelector<HTMLButtonElement>("#btn-camara")!;
 const videoFondo = document.querySelector<HTMLVideoElement>("#fondo-camara")!;
 let streamFondo: MediaStream | null = null;
 
 function apagarCamara() {
-  // Si play() falló, streamFondo sigue en null pero el video ya tiene el flujo.
+  // If play() failed, streamFondo is still null but the video already holds the stream.
   detenerCamaraDeFondo(videoFondo, streamFondo ?? (videoFondo.srcObject as MediaStream | null));
   streamFondo = null;
   videoFondo.hidden = true;
@@ -206,7 +207,7 @@ function apagarCamara() {
 
 btnCamara.addEventListener("click", async () => {
   if (streamFondo) {
-    apagarCamara(); // segundo clic: apagarla
+    apagarCamara(); // second click: turn it off
     return;
   }
   btnCamara.disabled = true;
@@ -224,14 +225,73 @@ btnCamara.addEventListener("click", async () => {
   }
 });
 
-// Un flujo abierto que nadie mira gasta batería y deja el LED encendido: se
-// apaga al salir de la página. No se reactiva sola al volver — eso sería abrir
-// la cámara sin que el usuario lo pida.
+// An open stream nobody is watching drains battery and leaves the LED on, so it
+// is shut off when the page is left. It does not restart on return: that would
+// open the camera without the user asking.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && streamFondo) {
     apagarCamara();
     avisarVisor("La cámara se apagó al salir de la página. Vuelve a activarla cuando quieras.");
   }
+});
+
+// ── Session 38: augmented reality with WebXR ───────────────────────────────
+const btnAR = document.querySelector<HTMLButtonElement>("#btn-ar")!;
+const btnSalirAR = document.querySelector<HTMLButtonElement>("#btn-salir-ar")!;
+const btnRecomprobar = document.querySelector<HTMLButtonElement>("#btn-recomprobar")!;
+const estadoAR = document.querySelector<HTMLElement>("#estado-ar")!;
+const overlayAR = document.querySelector<HTMLElement>("#xr-overlay");
+const diagAR = document.querySelector<HTMLElement>("#diag-ar")!;
+const detallesAR = document.querySelector<HTMLDetailsElement>(".diag-ar")!;
+let sesionAR: XRSession | null = null;
+
+// Can we? The button is only enabled if the answer is "yes". It is checked on
+// load, on "Comprobar de nuevo" and when the browser reports an XR device change
+// (so it also works if the emulator is activated afterwards).
+async function comprobarAR(): Promise<void> {
+  const { estado, lineas } = await diagnosticarAR();
+  estadoAR.textContent = mensajeSoporteAR(estado);
+  diagAR.textContent = lineas.join("\n");
+  if (!sesionAR) btnAR.disabled = estado !== "disponible";
+  // If AR is unavailable, the diagnostic opens so the failing check is visible.
+  detallesAR.open = estado !== "disponible";
+}
+void comprobarAR();
+btnRecomprobar.addEventListener("click", () => void comprobarAR());
+navigator.xr?.addEventListener("devicechange", () => void comprobarAR());
+
+btnAR.addEventListener("click", async () => {
+  avisarVisor("");
+  // The page camera and the AR session cannot run at once: AR opens the camera
+  // on its own. The Session 35 sensors are turned off too.
+  apagarCamara();
+  apagarSensores();
+  try {
+    // The request happens INSIDE the click: that is the "user gesture" WebXR requires.
+    const sesion = await pedirSesionAR(overlayAR);
+    sesionAR = sesion;
+    btnAR.disabled = true;
+    await visor.entrarEnAR(sesion, () => {
+      sesionAR = null;
+      btnAR.disabled = false;
+      estadoAR.textContent = "La sesión de realidad aumentada terminó.";
+    });
+    // domOverlayState exists only if the browser granted the "dom-overlay" feature.
+    estadoAR.textContent = sesion.domOverlayState
+      ? "Sesión de realidad aumentada activa. Usa «Salir de AR» sobre la cámara."
+      : "Sesión de realidad aumentada activa. Este navegador no mostró el botón sobre la cámara: sal con el gesto de salida del sistema.";
+  } catch (err) {
+    console.error("Could not start the AR session:", err);
+    sesionAR?.end().catch(() => {});
+    sesionAR = null;
+    btnAR.disabled = false;
+    avisarVisor(describirErrorAR(err));
+  }
+});
+
+// Single exit path: end(). Restoring state is done by the viewer's "end" listener.
+btnSalirAR.addEventListener("click", () => {
+  void sesionAR?.end();
 });
 
 // Registro del Service Worker generado por Workbox — Sesión 34.

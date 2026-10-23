@@ -39,4 +39,13 @@ Estructura nueva (Sesión 35)
   src/main.ts        conecta botones, visor y sensores
   (el resto igual que en el checkpoint de la Sesión 34)
 
+Sesión 38: realidad aumentada con WebXR (1/2)
+---------------------------------------------
+  src/xr.ts          diagnóstico de soporte (4 casos), pedir la sesión immersive-ar, errores
+  src/visor.ts       entrarEnAR(): bucle XR, escala en metros, restaura todo al salir
+  botón «Ver en AR»  deshabilitado salvo que el dispositivo admita AR (Chrome + ARCore)
+  Probar sin teléfono: extensión «Immersive Web Emulator» (Meta) en localhost:4173.
+  Publicar con HTTPS: .github/workflows/pages.yml compila con --base=/<repo>/
+  (el manifest usa rutas relativas). El cubo flota: aún no se apoya en superficies.
+
 UPTC · Facultad de Ingeniería · Electiva - PWA

@@ -1,7 +1,7 @@
-// camara.ts — la cámara como fondo vivo del visor 3D (Sesión 36, espejo de la 24).
-// El permiso, las constraints y los errores de getUserMedia se estudiaron en
-// la Sesión 24. La diferencia de hoy: el flujo queda ABIERTO como fondo, no se
-// abre un instante para una foto — por eso hay que apagarlo a tiempo.
+// camara.ts — the camera as a live background for the 3D viewer (Session 36, mirrors Session 24).
+// Permissions, constraints and getUserMedia errors were covered in Session 24.
+// What differs here: the stream stays OPEN as a background instead of opening
+// briefly for a photo, so it has to be shut off in time.
 
 export async function iniciarCamaraDeFondo(video: HTMLVideoElement): Promise<MediaStream> {
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -18,7 +18,7 @@ export function detenerCamaraDeFondo(video: HTMLVideoElement, stream: MediaStrea
   video.srcObject = null;
 }
 
-/** Traduce el error de getUserMedia a un mensaje para el usuario (mapeo corregido según MDN). */
+/** Maps a getUserMedia error to a user-facing message (mapping corrected against MDN). */
 export function describirErrorCamara(error: unknown): string {
   const nombre = error instanceof Error ? error.name : "";
   switch (nombre) {
@@ -32,7 +32,7 @@ export function describirErrorCamara(error: unknown): string {
     case "SecurityError":
       return "El navegador tiene deshabilitado el acceso a la cámara en esta página.";
     case "TypeError":
-      // En una página HTTP navigator.mediaDevices es undefined: la llamada lanza TypeError.
+      // On an HTTP page navigator.mediaDevices is undefined, so the call throws TypeError.
       return "La cámara solo está disponible en una página segura (HTTPS o localhost).";
     default:
       return "No se pudo abrir la cámara. El visor sigue funcionando sin ella.";

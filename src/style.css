@@ -133,9 +133,9 @@ body {
 .visor-zona { max-width: 40em; margin: 1.2em auto 0; padding: 0 1em; }
 .visor { position: relative; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #2a3550; background: #0b1220; }
 .visor canvas { position: relative; z-index: 1; display: block; width: 100%; touch-action: none; }
-/* Sesión 36: el video de la cámara detrás del canvas transparente */
+/* Session 36: the camera video behind the transparent canvas */
 .fondo-camara { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.fondo-camara[hidden] { display: none; } /* la clase da display propio: hay que restituir [hidden] */
+.fondo-camara[hidden] { display: none; } /* the class sets its own display, so [hidden] must be restored */
 .visor-barra { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; margin-bottom: .6em; }
 .visor-barra button { background: #162038; color: #e8e2cf; border: 1px solid #2a3550; border-radius: 8px; padding: .45em .8em; cursor: pointer; }
 .visor-barra button:disabled { opacity: .45; cursor: not-allowed; }
@@ -143,3 +143,17 @@ body {
 .aviso-visor { background: #3a2f10; border: 1px solid #b8860b; border-radius: 8px; padding: .5em .8em; font-size: .85em; }
 #app { width: 100%; }
 .visor-zona { width: 100%; box-sizing: border-box; }
+
+/* Session 38: augmented reality with WebXR */
+.ar-zona { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; margin-bottom: .6em; }
+.ar-zona button { background: #162038; color: #e8e2cf; border: 1px solid #2a3550; border-radius: 8px; padding: .45em .8em; cursor: pointer; }
+.ar-zona button:disabled { opacity: .45; cursor: not-allowed; }
+.estado-ar { flex: 1 1 100%; font-size: .85em; color: #9fb0d0; }
+.diag-ar { flex: 1 1 100%; font-size: .8em; color: #9fb0d0; }
+.diag-ar pre { margin: .4em 0 0; white-space: pre-wrap; }
+.xr-overlay { display: none; }
+/* While the session lasts, the browser stretches this element over the whole screen
+   (transparent background). We only decide how to lay out what is inside. */
+.xr-overlay:xr-overlay { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: .6em; padding-bottom: 1.2em; box-sizing: border-box; }
+.xr-overlay p { margin: 0; background: rgba(11, 18, 32, .75); color: #e8e2cf; padding: .4em .8em; border-radius: 8px; font-size: .9em; }
+.xr-overlay button { background: #ffcc29; color: #0b1220; border: 0; border-radius: 8px; padding: .7em 1.2em; font-weight: 700; cursor: pointer; }
