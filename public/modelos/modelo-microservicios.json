@@ -1,0 +1,19 @@
+{
+  "id": "modelo-microservicios",
+  "titulo": "Microservicios — ficha ampliada",
+  "detalle": [
+    "Cada servicio es dueño de una capacidad del negocio y de sus datos. Se comunican por la red, ya sea con peticiones directas o con eventos en un bus de mensajes.",
+    "La puerta de enlace esconde esa división: para el cliente sigue habiendo una sola dirección."
+  ],
+  "cuandoUsarlo": "Productos grandes con varios equipos que necesitan desplegar y escalar partes distintas de forma independiente.",
+  "ventajas": [
+    "Despliegue y escalado por servicio.",
+    "Un fallo se puede aislar.",
+    "Cada equipo elige su tecnología."
+  ],
+  "riesgos": [
+    "La red añade latencia y fallos nuevos.",
+    "Operar muchos servicios cuesta más que operar uno.",
+    "Los datos repartidos dificultan las transacciones."
+  ]
+}

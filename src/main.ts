@@ -1,159 +1,152 @@
 import "./style.css";
 import { registerSW } from "virtual:pwa-register";
-import { abrirBaseDeDatos, marcarModeloVisto, alternarFavorito, obtenerTodoElProgreso, guardarNotaDeEstudio } from "./db";
-import { derivarClaveDesdeContrasena, cifrarTexto, descifrarTexto, obtenerOCrearSal } from "./crypto";
-import type { ProgresoModelo } from "./db";
 import { crearVisor } from "./visor";
+import { CATALOGO } from "./modelos/catalogo";
+import type { Modelo } from "./modelos/tipos";
 import { pedirPermisoOrientacion, hayOrientacionReal, iniciarControlOrientacion } from "./sensores";
 import type { ControlOrientacion } from "./sensores";
-import { diagnosticarAR, mensajeSoporteAR, pedirSesionAR, describirErrorAR } from "./xr";
+import { diagnosticarAR, mensajeSoporteAR, pedirSesionAR, capacidadesDeSesion, describirErrorAR } from "./xr";
 import { iniciarCamaraDeFondo, detenerCamaraDeFondo, describirErrorCamara } from "./camara";
+import { cargarFicha, descargarFichas } from "./descargas";
+import { iniciarInstalacion } from "./instalar";
+import { iniciarBandaConexion } from "./conexion";
+import { guardarRastro, leerRastro, describirRastro } from "./rastro";
+import { iniciarTarjetas } from "./tarjetas";
 
-// Punto de entrada del proyecto. El andamiaje de Vite + TypeScript + Three.js
-// se confirmó en sesiones anteriores; el Service Worker se registró en la
-// Sesión 28 y se migró a estrategias con nombre en la 31-32.
+// Entry point. The page is wired in sections, one per feature; the heavy lifting
+// lives in the modules above (the "engine"), which do not depend on this file.
 //
-// Sesión 33: se agregó la capa de progreso en IndexedDB (favoritos, última
-// visita, nota de estudio cifrada). El catálogo real de modelos 3D —
-// dominio, vista, controlador — todavía no existe (se construye en sesiones
-// futuras del Sub-bloque B), así que esta demo usa tres IDs de prueba, tal
-// como indica la Actividad de la guía de la Sesión 33, en vez de inventar
-// archivos .glb/.gltf que no están en el proyecto.
-//
-// Sesión 34: el sw.js manual de las Sesiones 28-32 desaparece. Ahora lo
-// genera vite-plugin-pwa (Workbox integrado al build de Vite) — ver
-// vite.config.ts — y se registra con registerSW() de virtual:pwa-register
-// en vez de navigator.serviceWorker.register('/sw.js') a mano.
+// Sessions 33-34: progress in IndexedDB and the Service Worker (see tarjetas.ts, sw.ts).
+// Sessions 35-38: sensors, camera background and WebXR.
+// Sessions 39-42: surfaces in AR, models as data, install button, offline band,
+// draw on demand.
 
-const MODELOS_DEMO: { id: string; nombre: string }[] = [
-  { id: "modelo-demo-1", nombre: "Patrón MVC (de prueba)" },
-  { id: "modelo-demo-2", nombre: "Arquitectura en capas (de prueba)" },
-  { id: "modelo-demo-3", nombre: "Microservicios (de prueba)" },
-];
+const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
-const appEl = document.querySelector<HTMLDivElement>("#app")!;
-let db: IDBDatabase;
-let claveSesion: CryptoKey | null = null;
-let progresoPorId = new Map<string, ProgresoModelo>();
-
-async function obtenerClaveSesion(): Promise<CryptoKey | null> {
-  if (claveSesion) return claveSesion;
-  const contrasena = window.prompt(
-    "Contraseña para cifrar/descifrar la nota de estudio (la misma cada vez — no se guarda en ningún lado):"
-  );
-  if (!contrasena) return null;
-  const sal = obtenerOCrearSal();
-  claveSesion = await derivarClaveDesdeContrasena(contrasena, sal);
-  return claveSesion;
-}
-
-function render() {
-  appEl.innerHTML = `
-    <div class="atlas-demo">
-      <h1>Atlas 3D de Arquitectura de Software</h1>
-      <p class="aviso-demo">
-        Demo de progreso (Sesión 33) — estos tres modelos son IDs de prueba,
-        no modelos 3D reales todavía.
-      </p>
-      <div class="modelos-grid">
-        ${MODELOS_DEMO.map((m) => {
-          const p = progresoPorId.get(m.id);
-          const favorito = p?.favorito ?? false;
-          const ultimaVisita = p?.ultimaVisita ? new Date(p.ultimaVisita).toLocaleString() : "nunca";
-          const tieneNota = !!p?.notaCifrada;
-          return `
-            <article class="modelo-card" data-id="${m.id}">
-              <h2>${m.nombre}</h2>
-              <p class="meta">Última visita: ${ultimaVisita}</p>
-              <div class="acciones">
-                <button class="btn-visitar" data-id="${m.id}">Marcar como visto</button>
-                <button class="btn-favorito" data-id="${m.id}">${favorito ? "★ Favorito" : "☆ Marcar favorito"}</button>
-              </div>
-              <div class="nota-zona">
-                <input type="text" class="nota-input" placeholder="Nota de estudio..." />
-                <button class="btn-guardar-nota" data-id="${m.id}">🔒 Guardar nota</button>
-                <button class="btn-ver-nota" data-id="${m.id}" ${tieneNota ? "" : "disabled"}>👁 Ver nota</button>
-              </div>
-            </article>
-          `;
-        }).join("")}
-      </div>
-    </div>
-  `;
-
-  appEl.querySelectorAll<HTMLButtonElement>(".btn-visitar").forEach((btn) =>
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id!;
-      const registro = await marcarModeloVisto(db, id);
-      progresoPorId.set(id, registro);
-      render();
-    })
-  );
-
-  appEl.querySelectorAll<HTMLButtonElement>(".btn-favorito").forEach((btn) =>
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id!;
-      await alternarFavorito(db, id);
-      const todo = await obtenerTodoElProgreso(db);
-      progresoPorId = new Map(todo.map((p) => [p.modeloId, p]));
-      render();
-    })
-  );
-
-  appEl.querySelectorAll<HTMLButtonElement>(".btn-guardar-nota").forEach((btn) =>
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id!;
-      const card = btn.closest(".modelo-card")!;
-      const input = card.querySelector<HTMLInputElement>(".nota-input")!;
-      if (!input.value.trim()) return;
-      const clave = await obtenerClaveSesion();
-      if (!clave) return;
-      await guardarNotaDeEstudio(db, clave, id, input.value, cifrarTexto);
-      const todo = await obtenerTodoElProgreso(db);
-      progresoPorId = new Map(todo.map((p) => [p.modeloId, p]));
-      render();
-    })
-  );
-
-  appEl.querySelectorAll<HTMLButtonElement>(".btn-ver-nota").forEach((btn) =>
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id!;
-      const p = progresoPorId.get(id);
-      if (!p?.notaCifrada || !p.notaIv) return;
-      const clave = await obtenerClaveSesion();
-      if (!clave) return;
-      try {
-        const texto = await descifrarTexto(clave, { cifrado: p.notaCifrada, iv: p.notaIv });
-        window.alert(`Nota de estudio de "${id}":\n\n${texto}`);
-      } catch {
-        window.alert("No se pudo descifrar — la contraseña ingresada no es la correcta.");
-      }
-    })
-  );
-}
-
-async function iniciar() {
-  db = await abrirBaseDeDatos();
-  const todo = await obtenerTodoElProgreso(db);
-  progresoPorId = new Map(todo.map((p) => [p.modeloId, p]));
-  render();
-}
-
-iniciar();
-
-// ── Sesión 35: visor 3D controlado por sensores de orientación ──────────────
-const visor = crearVisor(document.querySelector<HTMLElement>("#visor")!);
-const btnOrientacion = document.querySelector<HTMLButtonElement>("#btn-orientacion")!;
-const btnCalibrar = document.querySelector<HTMLButtonElement>("#btn-calibrar")!;
-const lecturaVisor = document.querySelector<HTMLElement>("#lectura-visor")!;
-const avisoVisor = document.querySelector<HTMLElement>("#aviso-visor")!;
-let control: ControlOrientacion | null = null;
-let timerLectura = 0;
+const visor = crearVisor($("#visor"));
+const avisoVisor = $("#aviso-visor");
 
 function avisarVisor(texto: string) {
   avisoVisor.textContent = texto;
   avisoVisor.hidden = !texto;
 }
+
+// ── Models, pieces and the long-form sheet ──────────────────────────────────
+const selectorModelo = $("#selector-modelo");
+const listaPiezas = $("#lista-piezas");
+const fichaTitulo = $("#ficha-titulo");
+const fichaResumen = $("#ficha-resumen");
+const fichaPieza = $("#ficha-pieza");
+const fichaAmpliada = $("#ficha-ampliada");
+const btnFichaAmpliada = $<HTMLButtonElement>("#btn-ficha-ampliada");
+const btnDescargarFichas = $<HTMLButtonElement>("#btn-descargar-fichas");
+const estadoDescarga = $("#estado-descarga");
+let modeloActual: Modelo = CATALOGO[0];
+
+function marcarPieza(id: string | null) {
+  listaPiezas.querySelectorAll<HTMLButtonElement>(".pieza").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.id === id));
+  });
+  const pieza = modeloActual.piezas.find((p) => p.id === id);
+  fichaPieza.textContent = pieza ? `${pieza.nombre}: ${pieza.descripcion}` : "Elige una pieza para ver qué hace.";
+}
+
+function elegirModelo(modelo: Modelo) {
+  modeloActual = modelo;
+  visor.mostrarModelo(modelo);
+  selectorModelo.querySelectorAll<HTMLButtonElement>(".btn-modelo").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.id === modelo.id));
+  });
+  fichaTitulo.textContent = modelo.nombre;
+  fichaResumen.textContent = modelo.resumen;
+  listaPiezas.replaceChildren(
+    ...modelo.piezas.map((p) => {
+      const item = document.createElement("li");
+      const boton = document.createElement("button");
+      boton.type = "button";
+      boton.className = "pieza";
+      boton.dataset.id = p.id;
+      boton.textContent = p.nombre;
+      boton.addEventListener("click", () => {
+        visor.elegirPieza(p.id);
+        marcarPieza(p.id);
+      });
+      item.append(boton);
+      return item;
+    })
+  );
+  marcarPieza(null);
+  fichaAmpliada.hidden = true;
+  fichaAmpliada.replaceChildren();
+}
+
+selectorModelo.replaceChildren(
+  ...CATALOGO.map((m) => {
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "btn-modelo";
+    boton.dataset.id = m.id;
+    boton.textContent = m.nombre;
+    boton.addEventListener("click", () => elegirModelo(m));
+    return boton;
+  })
+);
+visor.alElegirPieza(marcarPieza);
+elegirModelo(CATALOGO[0]);
+
+btnFichaAmpliada.addEventListener("click", async () => {
+  if (!fichaAmpliada.hidden) {
+    fichaAmpliada.hidden = true; // second click: hide it
+    return;
+  }
+  try {
+    const ficha = await cargarFicha(modeloActual.id);
+    const lista = (titulo: string, items: string[]) => {
+      const bloque = document.createElement("div");
+      const cabecera = document.createElement("strong");
+      cabecera.textContent = titulo;
+      const ul = document.createElement("ul");
+      ul.replaceChildren(
+        ...items.map((t) => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          return li;
+        })
+      );
+      bloque.append(cabecera, ul);
+      return bloque;
+    };
+    const titulo = document.createElement("h3");
+    titulo.textContent = ficha.titulo;
+    const cuando = document.createElement("p");
+    cuando.textContent = `Cuándo usarlo: ${ficha.cuandoUsarlo}`;
+    fichaAmpliada.replaceChildren(
+      titulo,
+      ...ficha.detalle.map((t) => Object.assign(document.createElement("p"), { textContent: t })),
+      cuando,
+      lista("Ventajas", ficha.ventajas),
+      lista("Riesgos", ficha.riesgos)
+    );
+    fichaAmpliada.hidden = false;
+  } catch {
+    avisarVisor("La ficha ampliada no está disponible sin conexión. Descárgala antes con «Descargar fichas».");
+  }
+});
+
+btnDescargarFichas.addEventListener("click", async () => {
+  estadoDescarga.textContent = "Descargando fichas…";
+  const { guardadas, fallidas } = await descargarFichas(CATALOGO.map((m) => m.id));
+  estadoDescarga.textContent = fallidas
+    ? `Se guardaron ${guardadas} de ${CATALOGO.length} fichas. Revisa tu conexión y vuelve a intentarlo.`
+    : `Listo: ${guardadas} fichas disponibles sin conexión.`;
+});
+
+// ── Session 35: orientation sensors ─────────────────────────────────────────
+const btnOrientacion = $<HTMLButtonElement>("#btn-orientacion");
+const btnCalibrar = $<HTMLButtonElement>("#btn-calibrar");
+const lecturaVisor = $("#lectura-visor");
+let control: ControlOrientacion | null = null;
+let timerLectura = 0;
 
 function apagarSensores() {
   control?.detener();
@@ -167,7 +160,7 @@ function apagarSensores() {
 
 btnOrientacion.addEventListener("click", async () => {
   if (control) {
-    apagarSensores(); // segundo clic: volver al control manual
+    apagarSensores(); // second click: back to manual control
     return;
   }
   const permiso = await pedirPermisoOrientacion();
@@ -192,8 +185,8 @@ btnOrientacion.addEventListener("click", async () => {
 btnCalibrar.addEventListener("click", () => control?.calibrar());
 
 // ── Session 36: the camera as a live viewer background ─────────────────────
-const btnCamara = document.querySelector<HTMLButtonElement>("#btn-camara")!;
-const videoFondo = document.querySelector<HTMLVideoElement>("#fondo-camara")!;
+const btnCamara = $<HTMLButtonElement>("#btn-camara");
+const videoFondo = $<HTMLVideoElement>("#fondo-camara");
 let streamFondo: MediaStream | null = null;
 
 function apagarCamara() {
@@ -235,15 +228,20 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// ── Session 38: augmented reality with WebXR ───────────────────────────────
-const btnAR = document.querySelector<HTMLButtonElement>("#btn-ar")!;
-const btnSalirAR = document.querySelector<HTMLButtonElement>("#btn-salir-ar")!;
-const btnRecomprobar = document.querySelector<HTMLButtonElement>("#btn-recomprobar")!;
-const estadoAR = document.querySelector<HTMLElement>("#estado-ar")!;
+// ── Sessions 38-39: augmented reality with WebXR ───────────────────────────
+const btnAR = $<HTMLButtonElement>("#btn-ar");
+const btnSalirAR = $<HTMLButtonElement>("#btn-salir-ar");
+const btnRecolocar = $<HTMLButtonElement>("#btn-recolocar");
+const btnRecomprobar = $<HTMLButtonElement>("#btn-recomprobar");
+const estadoAR = $("#estado-ar");
+const rastroAR = $("#rastro-ar");
 const overlayAR = document.querySelector<HTMLElement>("#xr-overlay");
-const diagAR = document.querySelector<HTMLElement>("#diag-ar")!;
-const detallesAR = document.querySelector<HTMLDetailsElement>(".diag-ar")!;
+const xrEstado = $("#xr-estado");
+const diagAR = $("#diag-ar");
+const detallesAR = $<HTMLDetailsElement>(".diag-ar");
 let sesionAR: XRSession | null = null;
+
+rastroAR.textContent = describirRastro(leerRastro());
 
 // Can we? The button is only enabled if the answer is "yes". It is checked on
 // load, on "Comprobar de nuevo" and when the browser reports an XR device change
@@ -253,8 +251,12 @@ async function comprobarAR(): Promise<void> {
   estadoAR.textContent = mensajeSoporteAR(estado);
   diagAR.textContent = lineas.join("\n");
   if (!sesionAR) btnAR.disabled = estado !== "disponible";
-  // If AR is unavailable, the diagnostic opens so the failing check is visible.
-  detallesAR.open = estado !== "disponible";
+  // If AR is unavailable, point to the diagnostic. It is NOT opened automatically:
+  // opening it after load would push the whole page down (layout shift).
+  detallesAR.querySelector("summary")!.textContent =
+    estado === "disponible"
+      ? "Diagnóstico de realidad aumentada"
+      : "Diagnóstico de realidad aumentada — toca para ver qué falló";
 }
 void comprobarAR();
 btnRecomprobar.addEventListener("click", () => void comprobarAR());
@@ -271,15 +273,25 @@ btnAR.addEventListener("click", async () => {
     const sesion = await pedirSesionAR(overlayAR);
     sesionAR = sesion;
     btnAR.disabled = true;
-    await visor.entrarEnAR(sesion, () => {
-      sesionAR = null;
-      btnAR.disabled = false;
-      estadoAR.textContent = "La sesión de realidad aumentada terminó.";
+    const { hitTest, anclas } = capacidadesDeSesion(sesion);
+    await visor.entrarEnAR(sesion, {
+      hitTest,
+      anclas,
+      alEstado: (texto) => {
+        xrEstado.textContent = texto;
+        estadoAR.textContent = texto;
+      },
+      alTerminar: (resultado) => {
+        sesionAR = null;
+        btnAR.disabled = false;
+        rastroAR.textContent = describirRastro(guardarRastro({ modeloId: modeloActual.id, ...resultado }));
+        estadoAR.textContent = "La sesión de realidad aumentada terminó.";
+      },
     });
     // domOverlayState exists only if the browser granted the "dom-overlay" feature.
-    estadoAR.textContent = sesion.domOverlayState
-      ? "Sesión de realidad aumentada activa. Usa «Salir de AR» sobre la cámara."
-      : "Sesión de realidad aumentada activa. Este navegador no mostró el botón sobre la cámara: sal con el gesto de salida del sistema.";
+    if (!sesion.domOverlayState) {
+      estadoAR.textContent += " Este navegador no mostró los botones sobre la cámara: sal con el gesto de salida del sistema.";
+    }
   } catch (err) {
     console.error("Could not start the AR session:", err);
     sesionAR?.end().catch(() => {});
@@ -294,13 +306,56 @@ btnSalirAR.addEventListener("click", () => {
   void sesionAR?.end();
 });
 
-// Registro del Service Worker generado por Workbox — Sesión 34.
+// "Retry": forget the placement and look for a surface again.
+btnRecolocar.addEventListener("click", () => visor.reiniciarColocacion());
+
+// Taps on our buttons must not count as "select" (which would place the model).
+overlayAR?.addEventListener("beforexrselect", (e) => {
+  if ((e.target as HTMLElement).closest("button")) e.preventDefault();
+});
+
+// Gestures over the camera: one finger spins the model, two fingers scale it.
+if (overlayAR) {
+  const punteros = new Map<number, { x: number; y: number }>();
+  const distancia = () => {
+    const [a, b] = [...punteros.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  overlayAR.addEventListener("pointerdown", (e) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  });
+  overlayAR.addEventListener("pointermove", (e) => {
+    const previo = punteros.get(e.pointerId);
+    if (!previo) return;
+    if (punteros.size === 2) {
+      const antes = distancia();
+      punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (antes > 0) visor.gestoAR(0, distancia() / antes);
+    } else {
+      visor.gestoAR((e.clientX - previo.x) * 0.01, 1);
+      punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+  });
+  const soltar = (e: PointerEvent) => punteros.delete(e.pointerId);
+  overlayAR.addEventListener("pointerup", soltar);
+  overlayAR.addEventListener("pointercancel", soltar);
+}
+
+// ── Session 41: install button and offline band ─────────────────────────────
+iniciarInstalacion($<HTMLButtonElement>("#btn-instalar"), $("#aviso-instalacion"));
+iniciarBandaConexion($("#banda-sin-conexion"));
+
+// ── Progress cards (Session 33) ─────────────────────────────────────────────
+void iniciarTarjetas($("#app"), CATALOGO);
+
+// Service Worker registration (generated from src/sw.ts by vite-plugin-pwa).
 registerSW({
   immediate: true,
   onRegisteredSW(swUrl, registration) {
-    console.log("SW de Workbox registrado:", swUrl, registration);
+    console.log("Service Worker registered:", swUrl, registration);
   },
   onRegisterError(error) {
-    console.error("Error al registrar el SW de Workbox:", error);
+    console.error("Error registering the Service Worker:", error);
   },
 });

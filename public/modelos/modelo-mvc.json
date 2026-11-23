@@ -1,0 +1,18 @@
+{
+  "id": "modelo-mvc",
+  "titulo": "Patrón MVC — ficha ampliada",
+  "detalle": [
+    "MVC nació para separar la interfaz de los datos. El Controlador es el único que habla con las otras dos piezas: traduce un clic en una orden para el Modelo y elige qué Vista mostrar.",
+    "Como la Vista no contiene reglas, se puede cambiar la pantalla sin tocar el dominio, y probar el dominio sin abrir ninguna pantalla."
+  ],
+  "cuandoUsarlo": "Aplicaciones con interfaz donde las pantallas cambian más rápido que las reglas del dominio.",
+  "ventajas": [
+    "Pantalla y dominio evolucionan por separado.",
+    "El Modelo se puede probar sin interfaz.",
+    "Varias vistas pueden mostrar los mismos datos."
+  ],
+  "riesgos": [
+    "Controladores gigantes que acumulan lógica.",
+    "Demasiado ceremonial para una pantalla simple."
+  ]
+}

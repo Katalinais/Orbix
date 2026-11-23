@@ -1,0 +1,18 @@
+{
+  "id": "modelo-capas",
+  "titulo": "Arquitectura en capas — ficha ampliada",
+  "detalle": [
+    "Cada capa ofrece servicios a la de arriba y consume los de la de abajo. La regla estricta es que nadie salta capas: la presentación no habla con la base de datos.",
+    "Esa regla es la que permite reemplazar la capa de datos (por ejemplo, cambiar de base de datos) sin reescribir lo demás."
+  ],
+  "cuandoUsarlo": "Sistemas de gestión con reglas de negocio estables y equipos organizados por especialidad.",
+  "ventajas": [
+    "Fácil de entender y de enseñar.",
+    "Responsabilidades claras por capa.",
+    "Se puede reemplazar una capa sin tocar las otras."
+  ],
+  "riesgos": [
+    "Una petición simple atraviesa todas las capas.",
+    "Si se saltan capas, la estructura se degrada sin que nadie lo note."
+  ]
+}

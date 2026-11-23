@@ -48,4 +48,27 @@ Sesión 38: realidad aumentada con WebXR (1/2)
   Publicar con HTTPS: .github/workflows/pages.yml compila con --base=/<repo>/
   (el manifest usa rutas relativas). El cubo flota: aún no se apoya en superficies.
 
+Sesiones 39-42: el Atlas completo, sin framework
+-------------------------------------------------
+  src/modelos/       tipos y catálogo: los modelos 3D son DATOS (3 modelos con piezas)
+  public/modelos/    fichas ampliadas (JSON), se guardan en caché al leerlas o descargarlas
+  src/visor.ts       dibuja cualquier modelo; elegir pieza; dibujo BAJO DEMANDA; AR con
+                     superficies (hit-test), anclas, gestos y plan B sin hit-test/anclas
+  src/xr.ts          soporte AR en 4 casos, sesión con hit-test/anchors/dom-overlay opcionales
+  src/sw.ts          Service Worker propio (injectManifest); rutas con BASE_URL
+  src/base.ts        BASE_URL: «/» en local, «/repo/» en GitHub Pages
+  src/instalar.ts    botón «Instalar» (beforeinstallprompt), app instalada, iPhone
+  src/conexion.ts    banda «sin conexión»
+  src/rastro.ts      rastro de la última sesión de AR (localStorage)
+  src/tarjetas.ts    progreso: las tarjetas se crean UNA vez (una nota escrita no se pierde
+                     al marcar un favorito en otra tarjeta)
+
+Lista de verificación final (13 puntos)
+---------------------------------------
+  npm run build
+  npm run checklist          (equivale a ATLASDIR=. node checklist-atlas.js)
+  Necesita Chrome instalado (o CHROME_PATH=/ruta/a/chromium). Solo mira lo visible desde
+  fuera (ids, clases, lo que dice Chrome, lo que pasa sin red): sirve para cualquier versión.
+  Cada línea lleva un número; «✗ FALLÓ» dice qué punto falla.
+
 UPTC · Facultad de Ingeniería · Electiva - PWA

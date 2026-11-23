@@ -39,6 +39,12 @@ export function mensajeSoporteAR(estado: SoporteAR): string {
   }
 }
 
+/** What the browser actually granted (optional features may be ignored). */
+export interface CapacidadesAR {
+  hitTest: boolean;
+  anclas: boolean;
+}
+
 /**
  * Requests the AR session. MUST be called from a click handler: without a user
  * gesture the browser rejects it with SecurityError.
@@ -46,10 +52,19 @@ export function mensajeSoporteAR(estado: SoporteAR): string {
 export function pedirSesionAR(overlay: HTMLElement | null): Promise<XRSession> {
   const opciones: XRSessionInit & { domOverlay?: { root: Element } } = {
     requiredFeatures: ["local"], // the origin (0,0,0) is where the user is when the session starts
-    optionalFeatures: ["dom-overlay"], // if granted, the "Exit" button is drawn over the camera
+    // All optional: hit-test finds real surfaces, anchors keep the model fixed to
+    // them, dom-overlay draws our buttons over the camera. Without any of them
+    // the session still opens (plan B).
+    optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
   };
   if (overlay) opciones.domOverlay = { root: overlay };
   return navigator.xr!.requestSession("immersive-ar", opciones);
+}
+
+/** Reads which optional features the session really has. */
+export function capacidadesDeSesion(sesion: XRSession): CapacidadesAR {
+  const concedidas: string[] = (sesion as XRSession & { enabledFeatures?: string[] }).enabledFeatures ?? [];
+  return { hitTest: concedidas.includes("hit-test"), anclas: concedidas.includes("anchors") };
 }
 
 /** Explains to the user why requestSession failed. */
